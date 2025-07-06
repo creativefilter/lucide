@@ -1,0 +1,25 @@
+      let newNextRun = 'N/A';
+      try {
+        const jilData = await fetchData(`https://www.testjob.com/jobjil/${formattedJobName}`);
+        console.log(`JIL API response for ${jobName}:`, jilData);
+        console.log(`jilData[0]:`, jilData[0]);
+        if (Array.isArray(jilData) && jilData.length > 0) {
+            console.log(`jilData[0] is array:`, Array.isArray(jilData[0]));
+            if (Array.isArray(jilData[0]) && jilData[0].length > 0) {
+                console.log(`jilData[0][0]:`, jilData[0][0]);
+                if (jilData[0][0] && jilData[0][0].schedule) {
+                    newNextRun = jilData[0][0].schedule;
+                    console.log(`Extracted schedule:`, newNextRun);
+                } else {
+                    console.warn(`jilData[0][0] or jilData[0][0].schedule is undefined for ${jobName}`);
+                }
+            } else {
+                console.warn(`jilData[0] is empty or not an array for ${jobName}`);
+            }
+        } else {
+            console.warn(`JIL data is empty or not an array for ${jobName}`);
+        }
+      } catch (jilError) {
+        console.error(`Error parsing JIL data for ${jobName}:`, jilError);
+        newNextRun = 'Error fetching schedule'; // Specific error for schedule
+      }

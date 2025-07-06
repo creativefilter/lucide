@@ -1,0 +1,44 @@
+const refreshJobData = async (jobId, jobName) => {
+    setLoadingJobIds(prev => [...prev, jobId]); // Add job to loading state
+    try {
+      const formattedJobName = jobName.replace(/\s+/g, '').toLowerCase();
+
+      // Fetch status and last run from /jobstatus/{job_name}
+      const statusResponseData = await fetchData(`https://www.testjob.com/jobstatus/${formattedJobName}`);
+
+      let newStatus = 'Unknown';
+      let newLastRun = 'N/A';
+
+      // Check if statusResponseData is an array and has at least one element
+      if (Array.isArray(statusResponseData) && statusResponseData.length > 0) {
+        const latestRun = statusResponseData[0]; // Take the top/first one
+        newStatus = latestRun.STATUS || 'Unknown';
+        newLastRun = latestRun.end_time || 'N/A';
+      } else if (statusResponseData && typeof statusResponseData === 'object') {
+        // Fallback for non-array responses (e.g., if it's a single object)
+        newStatus = statusResponseData.STATUS || 'Unknown';
+        newLastRun = statusResponseData.end_time || 'N/A';
+      }
+
+
+      // Fetch next run from /jobjil/{job_name}
+      const jilData = await fetchData(`https://www.testjob.com/jobjil/${formattedJobName}`);
+      const newNextRun = jilData.schedule || 'N/A';
+
+      updateJobProperties(jobId, {
+        status: newStatus,
+        lastRun: newLastRun,
+        nextRun: newNextRun
+      });
+
+    } catch (error) {
+      console.error(`Error refreshing data for ${jobName}:`, error);
+      updateJobProperties(jobId, {
+        status: 'Failed to Load',
+        lastRun: 'Error',
+        nextRun: 'Error'
+      });
+    } finally {
+      setLoadingJobIds(prev => prev.filter(id => id !== jobId)); // Remove job from loading state
+    }
+  };

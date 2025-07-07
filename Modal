@@ -1,0 +1,59 @@
+// New Run History Modal Component
+const RunHistoryModal = ({ isOpen, onClose, jobName, historyData, isLoading, error }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Run History for: {jobName}</h2>
+        <div className="form-group">
+          <label htmlFor="runHistoryDisplay" className="form-label">History:</label>
+          {isLoading ? (
+            <p className="loading-message">Loading run history...</p>
+          ) : error ? (
+            <p className="error-message">{error}</p>
+          ) : (
+            <div className="history-table-container"> {/* NEW CONTAINER FOR TABLE */}
+              <table className="job-table">
+                <thead>
+                  <tr>
+                    <th>Job Name</th>
+                    <th>Status</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyData.length > 0 ? historyData.map((run, index) => (
+                    <tr key={index}>
+                      <td>{run.job_name}</td>
+                      <td>
+                        <span className={`status-badge ${run.status === 'completed' ? 'status-completed' : 'status-failed'}`}>
+                          {run.status}
+                        </span>
+                      </td>
+                      <td>{run.start_time}</td>
+                      <td>{run.end_time}</td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="4" className="text-center">No run history available for this job.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        <div className="modal-actions">
+          <button
+            onClick={onClose}
+            className="modal-button modal-button-cancel"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

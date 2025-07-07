@@ -1,0 +1,19 @@
+// Header Component
+const Header = ({ theme, toggleTheme, setCurrentPage }) => (
+  <header className="header">
+    <div className="container header-content">
+      <h1 className="header-title">SchedX</h1>
+      <nav className="header-nav-right">
+        <ul className="header-nav-list">
+          <li><a href="#" onClick={() => setCurrentPage('jobs')} className="header-nav-link">Jobs</a></li>
+          <li><a href="#" onClick={() => setCurrentPage('history')} className="header-nav-link">Job Run History</a></li> {/* ADDED THIS LINE */}
+          <li><a href="#" className="header-nav-link">Logs</a></li>
+          <li><a href="#" className="header-nav-link">Settings</a></li>
+        </ul>
+        <button onClick={toggleTheme} className="theme-toggle-button" title="Toggle Dark Mode">
+          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+        </button>
+      </nav>
+    </div>
+  </header>
+);

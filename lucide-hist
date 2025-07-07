@@ -1,0 +1,306 @@
+11111111111
+
+// New Job Run History Page Component
+const JobRunHistoryPage = ({ jobs }) => {
+  const [selectedJobNameForHistory, setSelectedJobNameForHistory] = useState(''); // To store the selected job name from dropdown
+  const [jobHistoryData, setJobHistoryData] = useState([]);
+  const [loadingJobHistory, setLoadingJobHistory] = useState(false);
+  const [jobHistoryError, setJobHistoryError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState(''); // For searching within the dropdown
+
+  const filteredJobs = jobs.filter(job =>
+    job.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const fetchData = useCallback(async (url) => {
+    console.log(`Attempting to fetch from mock URL: ${url}`);
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+
+    if (url.includes('www.jobhistory.com/')) {
+      const jobName = url.split('/').pop();
+      // Sample mock data for job history
+      if (jobName === 'daily_data_sync') {
+        return Promise.resolve([
+          { "duration_minutes": "400", "end_time": "Mon, 07 Jul 2025 15:33 GMT", "job_name": "Daily Data Sync", "start_time": "Mon, 07 July 2025 15:32 GMT", "status": "completed" },
+          { "duration_minutes": "350", "end_time": "Sun, 06 Jul 2025 15:30 GMT", "job_name": "Daily Data Sync", "start_time": "Sun, 06 July 2025 15:25 GMT", "status": "completed" },
+          { "duration_minutes": "200", "end_time": "Sat, 05 Jul 2025 15:20 GMT", "job_name": "Daily Data Sync", "start_time": "Sat, 05 July 2025 15:18 GMT", "status": "failed" }
+        ]);
+      } else if (jobName === 'weeklyreportgeneration') {
+        return Promise.resolve([
+          { "duration_minutes": "120", "end_time": "Fri, 04 Jul 2025 10:30 GMT", "job_name": "Weekly Report Generation", "start_time": "Fri, 04 July 2025 08:30 GMT", "status": "completed" }
+        ]);
+      } else if (jobName === 'monthlybackup') {
+        return Promise.resolve([
+          { "duration_minutes": "60", "end_time": "Wed, 02 Jul 2025 03:00 GMT", "job_name": "Monthly Backup", "start_time": "Wed, 02 July 2025 02:00 GMT", "status": "failed" }
+        ]);
+      }
+      return Promise.resolve([]); // Return empty array for other jobs
+    }
+    // Existing mock data for other APIs (kept for consistency, though not directly used by this component's fetchData)
+    if (url.includes('/jobstatus/')) {
+      const jobName = url.split('/').pop();
+      if (jobName === 'dailydatasync') { return Promise.resolve([{ STATUS: 'Running', end_time: '2025-07-07 11:59:00' }]); }
+      else if (jobName === 'weeklyreportgeneration') { return Promise.resolve([{ STATUS: 'Completed', end_time: '2025-07-05 10:30:00' }]); }
+      else if (jobName === 'monthlybackup') { return Promise.resolve([{ STATUS: 'Failed', end_time: '2025-07-01 03:00:00' }]); }
+      else if (jobName === 'hourlycacherefresh') { return Promise.resolve([{ STATUS: 'Pending', end_time: '2025-07-07 12:00:00' }]); }
+      else if (jobName === 'systemmaintenance') { return Promise.resolve([{ STATUS: 'Held', end_time: 'N/A' }]); }
+      else if (jobName === 'userdataimport') { return Promise.resolve([{ STATUS: 'On Ice', end_time: 'N/A' }]); }
+      return Promise.resolve([{ STATUS: 'Unknown', end_time: 'N/A' }]);
+    } else if (url.includes('/jobjil/')) {
+      return Promise.resolve([[{ schedule: 'Every Day at 12:00 PM' }]]);
+    } else if (url.includes('/jil/')) {
+      const job = initialJobs.find(j => j.name.replace(/\s+/g, '').toLowerCase() === url.split('/').pop());
+      if (job && job.definition) { return Promise.resolve(JSON.parse(job.definition)); }
+      return Promise.resolve({ error: 'Definition not found for this job.' });
+    } else if (url.includes('/fsj/') || url.includes('/onhold/') || url.includes('/offhold/') || url.includes('/kill/') || url.includes('/onice/')) {
+      return Promise.resolve({ success: true, message: 'Action performed successfully' });
+    }
+    return Promise.reject(new Error('Mock data not found for this URL.'));
+  }, []);
+
+  const handleJobSelect = useCallback(async (event) => {
+    const jobName = event.target.value;
+    setSelectedJobNameForHistory(jobName);
+    setJobHistoryData([]);
+    setJobHistoryError(null);
+    setLoadingJobHistory(true);
+
+    if (jobName) { // Only fetch if a job is selected (not the initial empty option)
+      try {
+        const formattedJobName = jobName.replace(/\s+/g, '_').toLowerCase();
+        const data = await fetchData(`https://www.jobhistory.com/${formattedJobName}`);
+        setJobHistoryData(data);
+      } catch (error) {
+        console.error(`Error fetching history for ${jobName}:`, error);
+        setJobHistoryError(`Failed to load run history. Please check the API and try again.`);
+      } finally {
+        setLoadingJobHistory(false);
+      }
+    } else {
+      setLoadingJobHistory(false); // No job selected, so no loading
+    }
+  }, [fetchData]);
+
+  const getStatusColorClass = (status) => {
+    switch (status) {
+      case 'completed': return 'status-completed';
+      case 'failed': return 'status-failed';
+      default: return 'status-default';
+    }
+  };
+
+  return (
+    <div className="job-history-container">
+      <h2 className="page-title">Job Run History</h2>
+      <div className="filter-search-container"> {/* Reusing filter-search-container for dropdown styling */}
+        <div className="search-input-wrapper">
+          <Search className="search-icon" size={20} />
+          <input
+            type="text"
+            placeholder="Search job by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+        <div className="filter-select-wrapper">
+          <History className="filter-icon" size={20} /> {/* Using History icon for dropdown */}
+          <select
+            value={selectedJobNameForHistory}
+            onChange={handleJobSelect}
+            className="filter-select"
+          >
+            <option value="">Select a Job to View History</option>
+            {filteredJobs.map(job => (
+              <option key={job.id} value={job.name}>
+                {job.name}
+              </option>
+            ))}
+          </select>
+          <div className="select-arrow">
+            <svg className="fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+          </div>
+        </div>
+      </div>
+
+      {selectedJobNameForHistory && (
+        <div className="selected-job-history-section">
+          <h3 className="selected-history-title">History for: {selectedJobNameForHistory}</h3>
+          {loadingJobHistory ? (
+            <p className="loading-message">Loading run history...</p>
+          ) : jobHistoryError ? (
+            <p className="error-message">{jobHistoryError}</p>
+          ) : (
+            <div className="history-table-container">
+              <table className="job-table">
+                <thead>
+                  <tr>
+                    <th>Job Name</th>
+                    <th>Status</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobHistoryData.length > 0 ? jobHistoryData.map((run, index) => (
+                    <tr key={index}>
+                      <td>{run.job_name}</td>
+                      <td>
+                        <span className={`status-badge ${getStatusColorClass(run.status)}`}>
+                          {run.status}
+                        </span>
+                      </td>
+                      <td>{run.start_time}</td>
+                      <td>{run.end_time}</td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="4" className="text-center">No run history available for this job.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+222222222222222222222
+
+const [currentPage, setCurrentPage] = useState('jobs'); // New state for current page: 'jobs' or 'history'
+
+
+
+<main className="main-content">
+  {currentPage === 'jobs' && (
+    <>
+      <JobControls
+        onAddJob={handleAddJob}
+      />
+      <JobFilterSearch
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        selectedStatus={selectedStatus}
+        onFilterChange={setSelectedStatus}
+      />
+      <JobList
+        jobs={filteredJobs}
+        onForceStart={handleForceStart}
+        onHold={handleOnHold}
+        onOffHold={handleOffHold}
+        onKill={handleKill}
+        onOnIce={handleOnIce}
+        onRefreshData={refreshJobData}
+        loadingJobIds={loadingJobIds}
+        onJobNameClick={handleJobNameClick}
+      />
+    </>
+  )}
+
+  {currentPage === 'history' && (
+    <JobRunHistoryPage jobs={jobs} /> // Pass all jobs to the history page
+  )}
+  {/* ... other modals ... */}
+</main>
+
+
+
+
+
+
+
+
+
+
+
+333333333333333333333
+
+// Header Component
+const Header = ({ setCurrentPage }) => ( // Removed theme and toggleTheme props
+  <header className="header">
+    <div className="container header-content">
+      <h1 className="header-title">SchedX</h1>
+      <nav className="header-nav-right">
+        <ul className="header-nav-list">
+          <li><a href="#" onClick={() => setCurrentPage('jobs')} className="header-nav-link">Jobs</a></li>
+          <li><a href="#" onClick={() => setCurrentPage('history')} className="header-nav-link">Job Run History</a></li>
+          <li><a href="#" className="header-nav-link">Logs</a></li>
+          <li><a href="#" className="header-nav-link">Settings</a></li>
+        </ul>
+        {/* Removed Dark Mode Toggle Button */}
+      </nav>
+    </div>
+  </header>
+);
+
+
+
+
+4444444444444
+
+
+/* New Page Specific Styles */
+.job-history-container {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #f3f4f6;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+/* ... (removed .history-list-wrapper and .history-actions, .history-button styles as they are no longer used) ... */
+
+/* Added for table within history display section */
+.history-table-container {
+  max-height: 400px; /* Limit height for scrollability */
+  overflow-y: auto; /* Enable vertical scrolling */
+  border: 1px solid #e5e7eb; /* Add a subtle border */
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+}
+
+.selected-job-history-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.selected-history-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+  text-align: center;
+  transition: color 0.3s ease;
+}
